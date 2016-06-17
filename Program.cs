@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 
 namespace TP2
@@ -6,7 +6,7 @@ namespace TP2
     class Program
     {
         // Declaro las constantes del problema.
-        static long maximoN = (long)(Pow(2, 15));//int.MaxValue;
+        static long maximoN = (long)(Pow(2, 18));//int.MaxValue;
         static float np = 96570;
         static float lambda = np / 90000;
         static float m1 = lambda * 1.9891f * Pow(10, 30);
@@ -21,23 +21,62 @@ namespace TP2
         static float c = (3 * Pow(10, 8));
         static float c2 = Pow(c, 2);
 
+        public struct Ejes {
+            private float semiejeMayor;
+            private float semiejeMenor;
+
+            public Ejes(int semiejeMayor, int semiejeMenor)
+            {
+                this.semiejeMayor = semiejeMayor;
+                this.semiejeMenor = semiejeMenor;
+            }
+
+            public void setSemiejeMayor(float semiejeMayor)
+            {
+                this.semiejeMayor = semiejeMayor;
+            }
+
+            public void setSemiejeMenor(float semiejeMenor)
+            {
+                this.semiejeMenor = semiejeMenor;
+            }
+
+            public float getSemiejeMayor()
+            {
+                return this.semiejeMayor;
+            }
+
+            public float getSemiejeMenor()
+            {
+                return this.semiejeMenor;
+            }
+
+            public void copyFrom(Ejes semiejes)
+            {
+                this.setSemiejeMayor(semiejes.getSemiejeMayor());
+                this.setSemiejeMenor(semiejes.getSemiejeMenor());
+            }
+        };
+
         static void Main(string[] args)
         {
             // Inicializo la aplicación y obtengo el nombre del archivo donde va 
             // a quedar todo guardado.
             var runName = "Files/";
-            /*var folderName = runName + "/Algoritmo1 Clasico/";
+            var folderName = runName + "/Algoritmo1 Clasico/";
             var fileNameArea = InitializeAreaFile(folderName);
-            var fileNamePeriodo = InitializePeriodFile(folderName);
+            var fileNamePrimeraLey = InitializePrimeraLeyFile(folderName);
+            var fileNameSegundaLey = InitializeSegundaLeyFile(folderName);
+            var fileNameTerceraLey = InitializeTerceraLeyFile(folderName);
             var fileNameEnergia = InitializeEnergyFile(folderName);
             Console.Write("Comenzando con Algoritmo1 Clasico...\n");
             var start = DateTime.Now;
-            CorrerAlgoritmoNVeces(fileNameArea, fileNamePeriodo, fileNameEnergia);
+            CorrerAlgoritmoNVeces(fileNameArea, fileNamePrimeraLey, fileNameSegundaLey, fileNameTerceraLey, fileNameEnergia);
             var end = DateTime.Now;
             var span = end - start;
             Console.Write("Finalizado Algoritmo 1 Clasico en " + ((int)span.TotalMilliseconds).ToString() + " milisegundos\n");
-            */
             // Cambio la carpeta para la segunda corrida.
+            /*
             var folderName = runName + "/Algoritmo1 Relativista/";
             var fileNameArea = InitializeAreaFile(folderName);
             var fileNamePeriodo = InitializePeriodFile(folderName);
@@ -48,6 +87,7 @@ namespace TP2
             var end2 = DateTime.Now;
             var span2 = end2 - start2;
             Console.Write("Finalizado Algoritmo 1 Relativista en " + ((int)span2.TotalMilliseconds).ToString() + " milisegundos\n");       
+            */
             Console.Read();
         }
 
@@ -64,7 +104,7 @@ namespace TP2
             }
 
             // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
-            var fileName = folder + "results.csv";
+            var fileName = folder + "Area.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "h",
                     "A(O2)",
@@ -73,10 +113,10 @@ namespace TP2
             return fileName;
         }
 
-        private static string InitializePeriodFile(string folderName)
+        private static string InitializePrimeraLeyFile(string folderName)
         {
             // Me aseguro de que exista una carpeta dónde dejar los archivos.
-            var folder = folderName + "/Periodo/";
+            var folder = folderName + "/Primera Ley/";
             var directoryInfo = new DirectoryInfo(folder);
             if (!directoryInfo.Exists)
             {
@@ -84,7 +124,29 @@ namespace TP2
             }
 
             // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
-            var fileName = folder + "results.csv";
+            var fileName = folder + "Primera Ley.csv";
+            File.AppendAllText(fileName, string.Format("{0};{1};{2};{3};{4}{5}",
+                    "N",
+                    "An",
+                    "E(An)",
+                    "Bn",
+                    "E(Bn)",
+                    Environment.NewLine));
+            return fileName;
+        }
+
+        private static string InitializeSegundaLeyFile(string folderName)
+        {
+            // Me aseguro de que exista una carpeta dónde dejar los archivos.
+            var folder = folderName + "/Segunda Ley/";
+            var directoryInfo = new DirectoryInfo(folder);
+            if (!directoryInfo.Exists)
+            {
+                directoryInfo.Create();
+            }
+
+            // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
+            var fileName = folder + "Segunda Ley.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "N",
                     "T",
@@ -93,10 +155,10 @@ namespace TP2
             return fileName;
         }
 
-        private static string InitializeEnergyFile(string folderName)
+        private static string InitializeTerceraLeyFile(string folderName)
         {
             // Me aseguro de que exista una carpeta dónde dejar los archivos.
-            var folder = folderName + "/Energia/";
+            var folder = folderName + "/Tercera Ley/";
             var directoryInfo = new DirectoryInfo(folder);
             if (!directoryInfo.Exists)
             {
@@ -104,7 +166,29 @@ namespace TP2
             }
 
             // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
-            var fileName = folder + "results.csv";
+            var fileName = folder + "Tercera Ley.csv";
+            File.AppendAllText(fileName, string.Format("{0};{1};{2};{3};{4}{5}",
+                    "N",
+                    "Tn^2",
+                    "Rn^3",
+                    "Tn^2 / Rn^3",
+                    "E(Tn^2 / Rn^3)",
+                    Environment.NewLine));
+            return fileName;
+        }
+
+        private static string InitializeEnergyFile(string folderName)
+        {
+            // Me aseguro de que exista una carpeta dónde dejar los archivos.
+            var folder = folderName + "/Conservacion de la Energia/";
+            var directoryInfo = new DirectoryInfo(folder);
+            if (!directoryInfo.Exists)
+            {
+                directoryInfo.Create();
+            }
+
+            // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
+            var fileName = folder + "Conservacion de la Energia.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "n",
                     "un",
@@ -117,33 +201,45 @@ namespace TP2
 
         #region Float
 
-        private static void CorrerAlgoritmoNVeces(string fileNameArea, string fileNamePeriodo, string fileNameEnergia)
+        private static void CorrerAlgoritmoNVeces(string fileNameArea, string fileNamePrimeraLey, string fileNameSegundaLey, string fileNameTerceraLey, string fileNameEnergia)
         {
-            // A2:
-            float[] area = new float[200];
-            float[] periodo = new float[200];
-            area[0] = 0;
-            periodo[0] = 0;
+            #region VariablesDelCiclo
+            float areaAnterior = 0;
+            float periodoAnterior = 0;
+            float resultadoTerceraLeyAnterior = 0;
+            Ejes semiejesAnterior = new Ejes(0, 0);
             float kAnterior = 0;
-            int index = 1;
+            #endregion
             bool calcularEnergia = false;
 
             for (long N = 4; N <= maximoN && N > 0; N *= 2)
             {
                 Console.Write("Procesando para N = " + N.ToString() + "\n");
+                float area;
+                float periodo;
+                float resultadoTerceraLey;
+                Ejes semiejes = new Ejes(0, 0);
                 float k = (2f * (float)Math.PI) / N; // Calculo el intervalo del ángulo (el paso de discretización)
-                if (N >= (maximoN / 8)) // Calculo energia para los 3 ultimos N
+
+                if (N > (maximoN  / 8)) // Calculo energia para los 3 ultimos N
                     calcularEnergia = true;
-                Algoritmo_Clasico(k, N, ref area[index], calcularEnergia, fileNameEnergia); // Corro el algoritmo y obtengo un resultado con (O2)
-                area[index] = realizarOperacionesArea(fileNameArea, N, area[index - 1], area[index], kAnterior, k);
-                periodo[index] = realizarOperacionesPeriodo(fileNamePeriodo, N, periodo[index - 1], area[index]);
+                Algoritmo_Clasico(k, N, out area, ref semiejes, calcularEnergia, fileNameEnergia); // Corro el algoritmo y obtengo un resultado con (O2)
+                realizarOperacionesPrimeraLey(fileNamePrimeraLey, N, semiejesAnterior, semiejes); // A.1
+                area = realizarOperacionesArea(fileNameArea, N, areaAnterior, area, kAnterior, k); // A.2
+                periodo = realizarOperacionesSegundaLey(fileNameSegundaLey, N, periodoAnterior, area); // A.2
+                resultadoTerceraLey = realizarOperacionesTerceraLey(fileNameTerceraLey, N, periodo, semiejes, resultadoTerceraLeyAnterior); // A.3
+
+                areaAnterior = area;
+                periodoAnterior = periodo;
+                resultadoTerceraLeyAnterior = resultadoTerceraLey;
+                semiejesAnterior.copyFrom(semiejes);
                 kAnterior = k;
-                index++;
+
                 Console.Write("PROCESADO\n");
             }
         }
 
-        static void Algoritmo_Clasico(float k, long N, ref float area, bool calculoEnergia, string fileNameEnergia)
+        static void Algoritmo_Clasico(float k, long N, out float area, ref Ejes ejes, bool calculoEnergia, string fileNameEnergia)
         {
             #region VariablesMetodoDiferencial
             float uActual = 1 / (a * (1 - e));
@@ -153,11 +249,22 @@ namespace TP2
             #endregion
 
             float uAnterior = uActual;
-            float energiaTotal = 0;
             float areaParcial = calcularArea((1 / uActual));
             for (long n = 0; n <= N - 1; n++)
             {
-                metodoEulerRelativista(uActual, v0, ref uProximo, ref vN, k);
+                metodoEuler(uActual, v0, ref uProximo, ref vN, k);
+                #region CalculosSemiejes
+                if (n == (N/4 - 1)) // Me encuentro aproximadamente a un cuarto de la orbita, puedo calcular Bn
+                {
+                    float hipotenusa = (1 / uProximo);
+                    float catetoMayor = (a * e); // Utilizo la distancia del centro al cuerpo estatico
+                    ejes.setSemiejeMenor(catetoPitagoras(hipotenusa, catetoMayor));
+                }
+                if (n == (N/2 - 1)) // Me encuentro a la mitad de la orbita, puedo calcular An
+                {
+                    ejes.setSemiejeMayor(Abs((1 / uProximo) - (a *e)));
+                }
+                #endregion
                 #region CalculosArea
                 float fN = calcularArea((1f/ uProximo)); //Calculo el area para cada rN
                 int factorTrapecio = 2;
@@ -170,14 +277,13 @@ namespace TP2
                 #region CalculosEnergia
                 if (calculoEnergia)
                 {
-                    float energiaParcial = realizarOperacionesEnergia(N, n, uAnterior, uActual, uProximo, k, fileNameEnergia);
+                    float energiaParcial = realizarOperacionesEnergia(N, n, uAnterior, uActual, uProximo, k, fileNameEnergia); // A.4
                     uAnterior = uActual; // Me guardo el valor anterior para usarlo para el calculo de la derivada
                 }
                 #endregion 
                 uActual = uProximo;
                 v0 = vN;
             }
-
             areaParcial *= (0.5f * k);
             area = areaParcial;
         }
@@ -302,18 +408,54 @@ namespace TP2
             return areaExtrapolada;
         }
 
-        private static float realizarOperacionesPeriodo(string fileNamePeriodo, long N, float periodoAnterior, float areaCalculada)
+        private static void realizarOperacionesPrimeraLey(string fileNamePrimeraLey, long N, Ejes semiejesAnterior, Ejes semiejes)
+        {
+            float semiejeMayorCalculado = semiejes.getSemiejeMayor();
+            float semiejeMenorCalculado = semiejes.getSemiejeMenor();
+            float deltaSemiejeMayor = (Abs(semiejeMayorCalculado - semiejesAnterior.getSemiejeMayor()));
+            float deltaSemiejeMenor = (Abs(semiejeMenorCalculado - semiejesAnterior.getSemiejeMenor()));
+
+            var messagePrimeraLey = string.Format("{0};{1};{2};{3};{4}{5}", N,
+                semiejeMayorCalculado.ToString(),
+                deltaSemiejeMayor.ToString(),
+                semiejeMenorCalculado.ToString(),
+                deltaSemiejeMenor.ToString(),
+                Environment.NewLine);
+            File.AppendAllText(fileNamePrimeraLey, messagePrimeraLey); //Lo agrego al archivo.
+        }
+
+        private static float realizarOperacionesSegundaLey(string fileNameSegundaLey, long N, float periodoAnterior, float areaCalculada)
         {
             float periodoCalculado = calcularPeriodo(areaCalculada);
 
-            float deltaPeriodo = Math.Abs(periodoCalculado - periodoAnterior);
+            float deltaPeriodo = Abs(periodoCalculado - periodoAnterior);
 
-            var messagePeriodo = string.Format("{0};{1};{2}{3}", N,
+            var messageSegundaLey = string.Format("{0};{1};{2}{3}", N,
                 periodoCalculado.ToString(),
                 deltaPeriodo.ToString(),
                 Environment.NewLine);
-            File.AppendAllText(fileNamePeriodo, messagePeriodo); // Lo agrego al archivo.
+            File.AppendAllText(fileNameSegundaLey, messageSegundaLey); // Lo agrego al archivo.
             return periodoCalculado;
+        }
+
+        private static float realizarOperacionesTerceraLey(string fileNameTerceraLey, long N, float periodo, Ejes semiejes, float resultadoTerceraLeyAnterior)
+        {
+            // Resultados
+            float periodoCuadrado = Pow(periodo, 2);
+            float semiejeMayorCubico = Pow(semiejes.getSemiejeMayor(), 3);
+            float resultadoTerceraLey = (periodoCuadrado / semiejeMayorCubico);
+
+            // Error de la constante
+            float deltaResultadoTerceraLey = Abs(resultadoTerceraLey - resultadoTerceraLeyAnterior);
+
+            var messageTerceraLey = string.Format("{0};{1};{2};{3};{4}{5}", N,
+                periodoCuadrado.ToString(),
+                semiejeMayorCubico.ToString(),
+                resultadoTerceraLey.ToString(),
+                deltaResultadoTerceraLey.ToString(),
+                Environment.NewLine);
+            File.AppendAllText(fileNameTerceraLey, messageTerceraLey); // Lo agrego al archivo
+            return resultadoTerceraLey;
         }
 
         #endregion
@@ -335,18 +477,18 @@ namespace TP2
                 energiaParcial = calcularEnergia(uActual, calcularDerivadaEnAdelanto(uActual, uProximo, k));
             }
             else energiaParcial = calcularEnergia(uActual, calcularDerivadaCentrada(uAnterior, uProximo, k));
-            escribirResultadoEnArchivo(n, uActual, energiaParcial, fileNameEnergia);
+            escribirResultadoEnergiaEnArchivo(n, uActual, energiaParcial, fileNameEnergia);
             energiaTotal += energiaParcial;
             if (n == N - 1)
             {
                 energiaParcial = calcularEnergia(uProximo, calcularDerivadaEnAtraso(uActual, uProximo, k));
-                escribirResultadoEnArchivo(n + 1, uProximo, energiaParcial, fileNameEnergia);
+                escribirResultadoEnergiaEnArchivo(n + 1, uProximo, energiaParcial, fileNameEnergia);
                 energiaTotal += energiaParcial;
             }
             return energiaTotal;
         }
 
-        private static void escribirResultadoEnArchivo(long n, float uActual, float energiaParcial, string fileNameEnergia)
+        private static void escribirResultadoEnergiaEnArchivo(long n, float uActual, float energiaParcial, string fileNameEnergia)
         {
             var messageEnergia = string.Format("{0};{1};{2}{3}", n,
                uActual.ToString(),
@@ -377,6 +519,16 @@ namespace TP2
         static float Sqrt(double n)
         {
             return (float)Math.Sqrt(n);
+        }
+
+        static float Abs(double n)
+        {
+            return (float)Math.Abs(n);
+        }
+
+        static float catetoPitagoras(float hipotenusa, float cateto)
+        {
+            return Sqrt(Pow(hipotenusa, 2) - Pow(cateto, 2));
         }
 
         private static float extrapolacionRichardson(float T1, float T2, float h1, float h2, float p)
