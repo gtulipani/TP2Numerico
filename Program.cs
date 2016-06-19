@@ -78,10 +78,11 @@ namespace TP2
             Console.Write("Finalizado Algoritmo 1 Clasico en " + ((int)span.TotalMilliseconds).ToString() + " milisegundos\n");
             */
             // Cambio la carpeta para la segunda corrida.
-            var folderName = runName + "/Algoritmo1 Relativista/";
+            var folderName2 = runName + "/Algoritmo1 Relativista/";
+            var fileNameEnergiaRelativista = InitializeEnergyFile(folderName2);
             Console.Write("Comenzando con Algoritmo1 Relativista...\n");
             var start2 = DateTime.Now;
-            CorrerAlgoritmoNVeces_Relativista();
+            CorrerAlgoritmoNVeces_Relativista(fileNameEnergiaRelativista);
             var end2 = DateTime.Now;
             var span2 = end2 - start2;
             Console.Write("Finalizado Algoritmo 1 Relativista en " + ((int)span2.TotalMilliseconds).ToString() + " milisegundos\n");
@@ -104,8 +105,8 @@ namespace TP2
             var fileName = folder + "Area.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "h",
-                    "A(O2)",
-                    "A(O4)",
+                    "A(O2) [m2]",
+                    "A(O4) [m2]",
                     Environment.NewLine));
             return fileName;
         }
@@ -124,10 +125,10 @@ namespace TP2
             var fileName = folder + "Primera Ley.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2};{3};{4}{5}",
                     "N",
-                    "An",
-                    "E(An)",
-                    "Bn",
-                    "E(Bn)",
+                    "An [m]",
+                    "E(An) [m]",
+                    "Bn [m]",
+                    "E(Bn) [m]",
                     Environment.NewLine));
             return fileName;
         }
@@ -146,8 +147,8 @@ namespace TP2
             var fileName = folder + "Segunda Ley.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "N",
-                    "T",
-                    "E(T)",
+                    "T [s]",
+                    "E(T) [s]",
                     Environment.NewLine));
             return fileName;
         }
@@ -166,10 +167,10 @@ namespace TP2
             var fileName = folder + "Tercera Ley.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2};{3};{4}{5}",
                     "N",
-                    "Tn^2",
-                    "Rn^3",
-                    "Tn^2 / Rn^3",
-                    "E(Tn^2 / Rn^3)",
+                    "Tn2 [s2]",
+                    "Rn3 [m3]",
+                    "Tn2 / Rn3 [s2/m3]",
+                    "E(Tn2 / Rn3) [s2/m3]",
                     Environment.NewLine));
             return fileName;
         }
@@ -188,8 +189,8 @@ namespace TP2
             var fileName = folder + "Conservacion de la Energia.csv";
             File.AppendAllText(fileName, string.Format("{0};{1};{2}{3}",
                     "n",
-                    "un",
-                    "En",
+                    "un [1/m]",
+                    "En [J]",
                     Environment.NewLine));
             return fileName;
         }
@@ -236,12 +237,12 @@ namespace TP2
             }
         }
 
-        private static void CorrerAlgoritmoNVeces_Relativista()
+        private static void CorrerAlgoritmoNVeces_Relativista(string fileNameEnergia)
         {
-            long N = 4096;
+            long N = 1024;
             Console.Write("Analizando la precesión de la órbita para N = " + N.ToString() + "\n");
             float k = (2f * (float)Math.PI) / N; // Calculo el intervalo del ángulo (el paso de discretización)
-            Algoritmo_Relativista(k, N);
+            Algoritmo_Relativista(k, N, fileNameEnergia);
             Console.Write("PROCESADO\n");
         }
 
@@ -295,7 +296,7 @@ namespace TP2
             area = areaParcial;
         }
 
-        static void Algoritmo_Relativista(float k, long N)
+        static void Algoritmo_Relativista(float k, long N, string fileNameEnergia)
         {
             #region VariablesMetodoDiferencial
             float uActual = 1 / (a * (1 - e));
@@ -303,14 +304,16 @@ namespace TP2
             float v0 = 0;
             float vN = 0;
             #endregion
+
+            float uAnterior = uActual;
             float uAnteultimo = 0, uFinal, uExtra = 0; // Variables que se utilizaran para la Interpolacion
             for (long n = 0; n <= N - 1; n++)
             {
                 metodoEulerRelativista(uActual, v0, ref uProximo, ref vN, k);
-                /*
-                float energiaParcial = realizarOperacionesEnergia(N, n, uAnterior, uActual, uProximo, k, fileNameEnergia); // A.4
+                #region CalculoEnergia
+                float energiaParcial = realizarOperacionesEnergia(N, n, uAnterior, uActual, uProximo, k, fileNameEnergia);
                 uAnterior = uActual; // Me guardo el valor anterior para usarlo para el calculo de la derivada
-                */
+                #endregion
                 if (n == N - 1)
                 {
                     uAnteultimo = uActual;
@@ -326,28 +329,30 @@ namespace TP2
             float rFinal = 1 / uActual;
             float rExtra = 1 / uExtra;
             Console.WriteLine("Los puntos utilizados para la interpolacion son: rAnteultimo = " + rAnteultimo.ToString() + ", rFinal = " + rFinal.ToString() + " y rExtra = " + rExtra.ToString());
-
+            float diferenciaPuntos = k;
             // El angulo alpha entre la masa en el foco y rAnteultimo o rExtra es k = 2pi/N
-            Console.WriteLine("Los puntos rAnteultimo y rExtra se encuentran a la distancia " + k.ToString() + " de rFinal");
+            Console.WriteLine("Para realizar la interpolacion se ubica rAnteulimo en el origen, y sucesivamente rFinal y rExtra con una diferencia de " + diferenciaPuntos.ToString());
             float C0, C1, C2;
-            interpolacionNewton(rAnteultimo, rFinal, rExtra, out C0, out C1, out C2, k); // Interpolo y obtengo los coeficientes del polinomio
+            interpolacionNewton(0, rAnteultimo, diferenciaPuntos, rFinal, 2* diferenciaPuntos, rExtra, out C0, out C1, out C2); // Interpolo y obtengo los coeficientes del polinomio
             Console.WriteLine("C0 = " + C0.ToString());
             Console.WriteLine("C1 = " + C1.ToString());
             Console.WriteLine("C2 = " + C2.ToString());
             // El polinomio interpolador es de la forma f(x) = C0 + C1(x - x0) + C2(x - x0)(x - x1)
-            // Si tomamos el centro desde la posicion del perihelio original, x0 es -k, x1 = 0 y x2 = k
-            // f(x) = C0 + C1 (x + k) + C2(x + k)(x)
-            // f(x) = x^2 (C2) + x (C1 + C2*k) + (C0 + C1*k)
-            // f'(x) = 2*x*C2 + C1 + C2*k
-            // f'(x) = 0 <==> 2*x*C2 + C1 + C2*k = 0 <==> x = (-C1 - C2*k) / (2*C2)
-            float minimo = (((-1f * C1) - (C2 * k)) / (2f * C2));
+            // Si ubicamos rAnteultimo en el origen y sucesivamente rFinal y rExtra, x0 es 0, x1 = k y x2 = 2*k
+            // f(x) = C0 + C1 (x) + C2(x)(x - k)
+            // f(x) = x^2 (C2) + x (C1 - C2*k) + C0
+            // f'(x) = 2*x*C2 + C1 - C2*k
+            // f'(x) = 0 <==> 2*x*C2 + C1 - C2*k = 0 <==> x = (C2*k - C1) / (2*C2)
+            float minimo = (((C2 * diferenciaPuntos) - C1) / (2f * C2));
             Console.WriteLine("El minimo calculado es " + minimo.ToString());
-            float valorMinimo = (C0 + (C1 * (minimo + k)) + (C2 * (minimo + k) * minimo));
+            float valorMinimo = (C0 + (C1 * minimo) + (C2 * minimo * (minimo - diferenciaPuntos)));
             Console.WriteLine("El valor de la funcion en el minimo es " + valorMinimo.ToString());
             // El ángulo theta equivalente a la precesión es la diferencia entre la posición del perihelio original (rFinal) y el máximo encontrado
-            // Sin(theta) = maximo / rFinal ==> theta = Asin(maximo / rFinal)
-            float precesion = Asin(minimo / rFinal);
+            // Sin(theta) = (minimo - k) / valorMinimo ==> theta = Asin((minimo - k) / valorMinimo)
+            float precesion = Asin((minimo - diferenciaPuntos) / valorMinimo);
             Console.WriteLine("El valor calculado de la precesion es " + precesion.ToString());
+            float precesionSegundosDeArco = precesion / (float)Math.PI * 3600f * 180f * 365.25f * 100f / 87.97f;
+            Console.WriteLine("El valor calculado de la precesion en segundos de arco por siglo terrestre es " + precesionSegundosDeArco.ToString());
             #endregion
         }
 
@@ -584,6 +589,11 @@ namespace TP2
             return (float)Math.Asin(p);
         }
 
+        static float Acos(double p)
+        {
+            return (float)Math.Acos(p);
+        }
+
         static float Atan(double p)
         {
             return (float)Math.Atan(p);
@@ -615,17 +625,17 @@ namespace TP2
             return (T2 + ((T2 - T1) / ((Pow(q, p) - 1))));
         }
 
-        private static void interpolacionNewton(float f0, float f1, float f2, out float C0, out float C1, out float C2, float distanciaPuntos)
+        private static void interpolacionNewton(float x0, float f0, float x1, float f1, float x2, float f2, out float C0, out float C1, out float C2)
         {
             C0 = f0; // f[x0]
-            C1 = diferenciasDivididas(f0, f1, distanciaPuntos); // f[x0,x1]
-            float f1_f2 = diferenciasDivididas(f1, f2, distanciaPuntos); // f[x1,x2]
-            C2 = diferenciasDivididas(C1, f1_f2, (2f * distanciaPuntos)); // f[x0,x1,x2]
+            C1 = diferenciasDivididas(f0, f1, (x0 - x1)); // f[x0,x1]
+            float f1_f2 = diferenciasDivididas(f1, f2, (x1 - x2)); // f[x1,x2]
+            C2 = diferenciasDivididas(C1, f1_f2, (x0 - x2)); // f[x0,x1,x2]
         }
 
         private static float diferenciasDivididas(float fi, float fn, float delta)
         {
-            return ((fn - fi) / delta);
+            return ((fi / delta) - (fn / delta));
         }
 
         #endregion
@@ -656,8 +666,8 @@ namespace TP2
 
         private static bool metodoEulerRelativista(float u0, float v0, ref float uN, ref float vN, float k)
         {
-            metodoEuler(u0, v0, ref uN, ref vN, k);
-            vN += (k * 3 * GM * Pow(u0,2) / c2);
+            uN = u0 + k * v0;
+            vN = v0 - k * u0 + k * (GM / h2) + (k * 3f * GM * Pow(u0, 2) / c2);
             return true;
         }
 
