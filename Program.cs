@@ -5,21 +5,24 @@ namespace TP2
 {
     class Program
     {
-        // Declaro las constantes del problema.
-        static long maximoN = (long)(Pow(2, 15));//int.MaxValue;
+        // Constantes del problema.
+        static long maximoN = 2097152;
         static float np = 96570;
-        static float lambda = 1f;//np / 90000;
-        static float m1 = lambda * 1.9891f * Pow(10, 30);
-        static float m2 = lambda * 3.301f * Pow(10, 23);
-        static float e = 0.2056f / lambda;
-        static float a = (Pow(lambda, 2)) * 5.791f * Pow(10, 10);
+        static float lambdaOriginal = (np / 90000);
         static float G = 6.673f * Pow(10, -11);
-        static float GM = G * (m1 + m2);
-        static float h2 = a * GM * (1f - Pow(e, 2));
-        static float h = Sqrt(h2);
-        static float q = a * (1 - e);
         static float c = (3 * Pow(10, 8));
         static float c2 = Pow(c, 2);
+
+        // Constantes dependientes de lambda
+        static float lambda;
+        static float m1;
+        static float m2;
+        static float GM;
+        static float e;
+        static float a;
+        static float h2;
+        static float h;
+        static float q;
 
         public struct Ejes {
             private float semiejeMayor;
@@ -62,9 +65,10 @@ namespace TP2
         {
             // Inicializo la aplicación y obtengo el nombre del archivo donde va 
             // a quedar todo guardado.
+            actualizarConstantesLambda(lambdaOriginal); // Le doy valor a las constantes dependientes de lambda
             var runName = "Files/";
-            /*
             var folderName = runName + "/Algoritmo1 Clasico/";
+            actualizarConstantesLambda(lambdaOriginal); // Le doy valor a las constantes dependientes de lambda
             var fileNameArea = InitializeAreaFile(folderName);
             var fileNamePrimeraLey = InitializePrimeraLeyFile(folderName);
             var fileNameSegundaLey = InitializeSegundaLeyFile(folderName);
@@ -76,17 +80,31 @@ namespace TP2
             var end = DateTime.Now;
             var span = end - start;
             Console.Write("Finalizado Algoritmo 1 Clasico en " + ((int)span.TotalMilliseconds).ToString() + " milisegundos\n");
-            */
             // Cambio la carpeta para la segunda corrida.
-            var folderName2 = runName + "/Algoritmo1 Relativista/";
-            var fileNameEnergiaRelativista = InitializeEnergyFile(folderName2);
+            
+            var folderName3 = runName + "/Algoritmo1 Relativista/";
+            actualizarConstantesLambda(1); // Modifico las constantes dependientes de lambda para convertir el sistema a Mercurio y el Sol
+            var fileNameEnergiaRelativista = InitializeEnergyFile(folderName3);
             Console.Write("Comenzando con Algoritmo1 Relativista...\n");
-            var start2 = DateTime.Now;
+            var start3 = DateTime.Now;
             CorrerAlgoritmoNVeces_Relativista(fileNameEnergiaRelativista);
-            var end2 = DateTime.Now;
-            var span2 = end2 - start2;
-            Console.Write("Finalizado Algoritmo 1 Relativista en " + ((int)span2.TotalMilliseconds).ToString() + " milisegundos\n");
+            var end3 = DateTime.Now;
+            var span3 = end3 - start3;
+            Console.Write("Finalizado Algoritmo 1 Relativista en " + ((int)span3.TotalMilliseconds).ToString() + " milisegundos\n");  
             Console.Read();
+        }
+
+        private static void actualizarConstantesLambda(float valorLambda)
+        {
+            lambda = valorLambda;
+            m1 = lambda * 1.9891f * Pow(10, 30);
+            m2 = lambda * 3.301f * Pow(10, 23);
+            GM = G * (m1 + m2);
+            e = 0.2056f / lambda;
+            a = (Pow(lambda, 2)) * 5.791f * Pow(10, 10);
+            h2 = a * GM * (1f - Pow(e, 2));
+            h = Sqrt(h2);
+            q = a * (1 - e);
         }
 
         #region Inicializadores
@@ -197,7 +215,7 @@ namespace TP2
 
         #endregion
 
-        #region Float
+        #region EjecucionAlgoritmos
 
         private static void CorrerAlgoritmoNVeces(string fileNameArea, string fileNamePrimeraLey, string fileNameSegundaLey, string fileNameTerceraLey, string fileNameEnergia)
         {
@@ -218,9 +236,6 @@ namespace TP2
                 float resultadoTerceraLey;
                 Ejes semiejes = new Ejes(0, 0);
                 float k = (2f * (float)Math.PI) / N; // Calculo el intervalo del ángulo (el paso de discretización)
-
-                if (N > (maximoN / 8)) // Calculo energia para los 3 ultimos N
-                    calcularEnergia = true;
                 Algoritmo_Clasico(k, N, out area, ref semiejes, calcularEnergia, fileNameEnergia); // Corro el algoritmo y obtengo un resultado con (O2)
                 realizarOperacionesPrimeraLey(fileNamePrimeraLey, N, semiejesAnterior, semiejes); // A.1
                 area = realizarOperacionesArea(fileNameArea, N, areaAnterior, area, kAnterior, k); // A.2
@@ -239,13 +254,12 @@ namespace TP2
 
         private static void CorrerAlgoritmoNVeces_Relativista(string fileNameEnergia)
         {
-            long N = 1024;
+            long N = 1048;
             Console.Write("Analizando la precesión de la órbita para N = " + N.ToString() + "\n");
             float k = (2f * (float)Math.PI) / N; // Calculo el intervalo del ángulo (el paso de discretización)
             Algoritmo_Relativista(k, N, fileNameEnergia);
             Console.Write("PROCESADO\n");
         }
-
 
         static void Algoritmo_Clasico(float k, long N, out float area, ref Ejes ejes, bool calculoEnergia, string fileNameEnergia)
         {
@@ -333,7 +347,7 @@ namespace TP2
             // El angulo alpha entre la masa en el foco y rAnteultimo o rExtra es k = 2pi/N
             Console.WriteLine("Para realizar la interpolacion se ubica rAnteulimo en el origen, y sucesivamente rFinal y rExtra con una diferencia de " + diferenciaPuntos.ToString());
             float C0, C1, C2;
-            interpolacionNewton(0, rAnteultimo, diferenciaPuntos, rFinal, 2* diferenciaPuntos, rExtra, out C0, out C1, out C2); // Interpolo y obtengo los coeficientes del polinomio
+            interpolacionNewton(0, rAnteultimo, diferenciaPuntos, rFinal, 2 * diferenciaPuntos, rExtra, out C0, out C1, out C2); // Interpolo y obtengo los coeficientes del polinomio
             Console.WriteLine("C0 = " + C0.ToString());
             Console.WriteLine("C1 = " + C1.ToString());
             Console.WriteLine("C2 = " + C2.ToString());
@@ -348,95 +362,12 @@ namespace TP2
             float valorMinimo = (C0 + (C1 * minimo) + (C2 * minimo * (minimo - diferenciaPuntos)));
             Console.WriteLine("El valor de la funcion en el minimo es " + valorMinimo.ToString());
             // El ángulo theta equivalente a la precesión es la diferencia entre la posición del perihelio original (rFinal) y el máximo encontrado
-            // Sin(theta) = (minimo - k) / valorMinimo ==> theta = Asin((minimo - k) / valorMinimo)
-            float precesion = Asin((minimo - diferenciaPuntos) / valorMinimo);
+            // Tan(theta) = (minimo - k) / valorMinimo ==> theta = Atan((minimo - k) / valorMinimo)
+            float precesion = Atan((minimo - diferenciaPuntos) / valorMinimo);
             Console.WriteLine("El valor calculado de la precesion es " + precesion.ToString());
             float precesionSegundosDeArco = precesion / (float)Math.PI * 3600f * 180f * 365.25f * 100f / 87.97f;
             Console.WriteLine("El valor calculado de la precesion en segundos de arco por siglo terrestre es " + precesionSegundosDeArco.ToString());
             #endregion
-        }
-
-        static float Algoritmo2_Clasico(float k, long N)
-        {
-            float u0 = 1 / (a * (1 - e));
-            float v0 = 0;
-
-            float uN = 0;
-            float vN = 0;
-
-            // Corro el algoritmo.
-            for (long n = 0; n < N - 1; n++)
-            {
-                float w1 = u0 + k * v0 / 2f;
-                float z1 = v0 + k * ((GM / h2) - u0) / 2f;
-                float w2 = u0 + k * z1 / 2;
-                float z2 = v0 + k * ((GM / h2) - w1) / 2f;
-                float w3 = u0 + k * z2;
-                float z3 = v0 + k * ((GM / h2) - w2);
-
-                uN = u0 + k * (v0 + 2 * z1 + 2 * z2 + z3) / 6;
-                vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
-
-                u0 = uN;
-                v0 = vN;
-            }
-
-            return uN;
-        }
-
-        #endregion
-
-        #region Double
-
-        // B1
-        static double Algoritmo1D_TP1(double k, long N)
-        {
-            double u0 = 1 / (a * (1 - e));
-            double v0 = 0;
-
-            double uN = 0;
-            double vN = 0;
-
-            // Corro el algoritmo.
-            for (long n = 0; n < N - 1; n++)
-            {
-                uN = u0 + k * v0;
-                vN = v0 - k * u0 + k * (GM / h2);
-
-                u0 = uN;
-                v0 = vN;
-            }
-
-            return uN;
-        }
-
-        // C1
-        static double Algoritmo2D_TP1(double k, long N)
-        {
-            double u0 = 1 / (a * (1 - e));
-            double v0 = 0;
-
-            double uN = 0;
-            double vN = 0;
-
-            // Corro el algoritmo.
-            for (long n = 0; n < N - 1; n++)
-            {
-                double w1 = u0 + k * v0 / 2f;
-                double z1 = v0 + k * ((GM / h2) - u0) / 2f;
-                double w2 = u0 + k * z1 / 2;
-                double z2 = v0 + k * ((GM / h2) - w1) / 2f;
-                double w3 = u0 + k * z2;
-                double z3 = v0 + k * ((GM / h2) - w2);
-
-                uN = u0 + k * (v0 + 2 * z1 + 2 * z2 + z3) / 6;
-                vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
-
-                u0 = uN;
-                v0 = vN;
-            }
-
-            return uN;
         }
 
         #endregion
@@ -584,16 +515,6 @@ namespace TP2
             return (float)Math.Tan(p);
         }
 
-        static float Asin(double p)
-        {
-            return (float)Math.Asin(p);
-        }
-
-        static float Acos(double p)
-        {
-            return (float)Math.Acos(p);
-        }
-
         static float Atan(double p)
         {
             return (float)Math.Atan(p);
@@ -657,25 +578,42 @@ namespace TP2
             return ((funcionEnAdelanto - funcionEnAtraso) / (2f * h));
         }
 
-        private static bool metodoEuler(float u0, float v0, ref float uN, ref float vN, float k)
+        private static void metodoEuler(float u0, float v0, ref float uN, ref float vN, float k)
         {
-            uN = u0 + k * v0;
-            vN = v0 - k * u0 + k * (GM / h2);
-            return true;
+            uN = u0 + (k * v0);
+            vN = v0 - (k * u0) + (k * (GM / h2));
         }
 
-        private static bool metodoEulerRelativista(float u0, float v0, ref float uN, ref float vN, float k)
+        private static void metodoEulerRelativista(float u0, float v0, ref float uN, ref float vN, float k)
         {
-            uN = u0 + k * v0;
-            vN = v0 - k * u0 + k * (GM / h2) + (k * 3f * GM * Pow(u0, 2) / c2);
-            return true;
+            uN = u0 + (k * v0);
+            vN = v0 - (k * u0) + (k * (GM / h2)) + (k * 3f * GM * Pow(u0, 2) / c2);
         }
 
-        private static bool rungeKuttaOrden4(float u0, float v0, ref float uN, ref float vN, float k)
+        private static void rungeKuttaOrden4(float u0, float v0, ref float uN, ref float vN, float k)
         {
-            uN = u0 + k * v0;
-            vN = v0 - k * u0 + k * (GM / h2);
-            return true;
+            float w1 = u0 + k * v0 / 2f;
+            float z1 = v0 + k * ((GM / h2) - u0) / 2f;
+            float w2 = u0 + k * z1 / 2;
+            float z2 = v0 + k * ((GM / h2) - w1) / 2f;
+            float w3 = u0 + k * z2;
+            float z3 = v0 + k * ((GM / h2) - w2);
+
+            uN = u0 + k * (v0 + 2 * z1 + 2 * z2 + z3) / 6;
+            vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
+        }
+
+        private static void rungeKuttaOrden4Relativista(float u0, float v0, ref float uN, ref float vN, float k)
+        {
+            float w1 = u0 + k * v0 / 2f;
+            float z1 = v0 + k * ((GM / h2) - u0 - (3f * GM * Pow(u0, 2) / c2)) / 2f;
+            float w2 = u0 + k * z1 / 2;
+            float z2 = v0 + k * ((GM / h2) - w1 - (3f * GM * Pow(w1, 2) / c2)) / 2f;
+            float w3 = u0 + k * z2;
+            float z3 = v0 + k * ((GM / h2) - w2 - (3f * GM * Pow(w2, 2) / c2));
+
+            uN = u0 + k * (v0 + 2 * z1 + 2 * z2 + z3) / 6;
+            vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
         }
 
         #endregion
