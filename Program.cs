@@ -7,6 +7,7 @@ namespace TP2
     {
         // Constantes del problema.
         static long maximoN = 2097152;
+        static long maximoNPrecesion = 16777216;
         static float np = 96570;
         static float lambdaOriginal = (np / 90000);
         static float G = 6.673f * Pow(10, -11);
@@ -84,11 +85,12 @@ namespace TP2
             // Cambio la carpeta para la segunda corrida.
             */
             var folderName3 = runName + "/Algoritmo1 Relativista/";
+            var fileNamePrecesion = InitializePrecesionFile(folderName3);
             actualizarConstantesLambda(1); // Modifico las constantes dependientes de lambda para convertir el sistema a Mercurio y el Sol
             var fileNameEnergiaRelativista = InitializeEnergyFile(folderName3);
             Console.Write("Comenzando con Algoritmo1 Relativista...\n");
             var start3 = DateTime.Now;
-            CorrerAlgoritmoNVeces_Relativista(fileNameEnergiaRelativista);
+            CorrerAlgoritmoNVeces_Relativista(fileNameEnergiaRelativista, fileNamePrecesion);
             var end3 = DateTime.Now;
             var span3 = end3 - start3;
             Console.Write("Finalizado Algoritmo 1 Relativista en " + ((int)span3.TotalMilliseconds).ToString() + " milisegundos\n");  
@@ -214,6 +216,32 @@ namespace TP2
             return fileName;
         }
 
+        private static string InitializePrecesionFile(string folderName)
+        {
+            // Me aseguro de que exista una carpeta dónde dejar los archivos.
+            var folder = folderName + "/Precesion con lambda " + lambda.ToString() + "/";
+            var directoryInfo = new DirectoryInfo(folder);
+            if (!directoryInfo.Exists)
+            {
+                directoryInfo.Create();
+            }
+
+            // Blanqueo el archivo de resultados, y le pongo las cabeceras a las columnas.
+            var fileName = folder + "Calculo de la Precesion.csv";
+            File.AppendAllText(fileName, string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8}{9}",
+                    "N",
+                    "rAnterior",
+                    "rFinal",
+                    "rExtra",
+                    "C0",
+                    "C1",
+                    "C2",
+                    "Precesion [rad]",
+                    "Precesion [''/sigloTerrestre]",
+                    Environment.NewLine));
+            return fileName;
+        }
+
         #endregion
 
         #region EjecucionAlgoritmos
@@ -253,13 +281,15 @@ namespace TP2
             }
         }
 
-        private static void CorrerAlgoritmoNVeces_Relativista(string fileNameEnergia)
+        private static void CorrerAlgoritmoNVeces_Relativista(string fileNameEnergia, string fileNamePrecesion)
         {
-            long N = 16777216;
-            Console.Write("Analizando la precesión de la órbita para N = " + N.ToString() + "\n");
-            double k = (2f * Pi()) / N; // Calculo el intervalo del ángulo (el paso de discretización)
-            Algoritmo_Relativista(k, N, fileNameEnergia);
-            Console.Write("PROCESADO\n");
+            for (long N = 8; N <= maximoNPrecesion; N*=2)
+            {
+                Console.Write("Analizando la precesión de la órbita para N = " + N.ToString() + "\n");
+                double k = (2d * Pi()) / N; // Calculo el intervalo del ángulo (el paso de discretización)
+                Algoritmo_Relativista(k, N, fileNameEnergia, fileNamePrecesion);
+                Console.Write("PROCESADO\n");
+            }
         }
 
         static void Algoritmo_Clasico(float k, long N, out float area, ref Ejes ejes, bool calculoEnergia, string fileNameEnergia)
@@ -311,7 +341,7 @@ namespace TP2
             area = areaParcial;
         }
 
-        static void Algoritmo_Relativista(double k, long N, string fileNameEnergia)
+        static void Algoritmo_Relativista(double k, long N, string fileNameEnergia, string fileNamePrecesion)
         {
             #region VariablesMetodoDiferencial
             double uActual = 1 / (a * (1 - e));
@@ -324,7 +354,7 @@ namespace TP2
             double uAnteultimo = 0, uFinal; // Variables que se utilizaran para la Interpolacion
             for (long n = 0; n <= N - 1; n++)
             {
-                metodoEulerRelativista(uActual, v0, ref uProximo, ref vN, k);
+                rungeKuttaOrden4Relativista(uActual, v0, ref uProximo, ref vN, k);
                 /*
                 #region CalculoEnergia
                 double energiaParcial = realizarOperacionesEnergia(N, n, uAnterior, uActual, uProximo, k, fileNameEnergia);
@@ -339,60 +369,80 @@ namespace TP2
                 v0 = vN;
             }
           uFinal = uActual;
-            #region CalculoPrecesion
-            double uExtra = uFinal;
-            int cantidadRepeticiones = 0;
-            metodoEulerRelativista(uFinal, v0, ref uExtra, ref vN, k); // Obtengo un valor más de la órbita
-            v0 = vN;
-            while (uExtra >= uFinal) 
+		  #region CalculoPrecesion
+		  double uExtra = uFinal;
+		  int cantidadRepeticiones = 0;
+            rungeKuttaOrden4Relativista(uFinal, v0, ref uExtra, ref vN, k); // Obtengo un valor más de la órbita
+		  v0 = vN;
+		  while (uExtra >= uFinal) 
+		  {
+		      // Sigo obteniendo valores de la órbita hasta conseguir uno uN vuelva a disminuir (rN vuelve a aumentar)
+		      // Voy corriendo los dos que me voy guardando así me queda una terna consecutiva
+		      uAnteultimo = uFinal;
+		      uFinal = uExtra;
+                rungeKuttaOrden4Relativista(uFinal, v0, ref uExtra, ref vN, k); // Obtengo un valor más de la órbita
+		      v0 = vN;
+		      cantidadRepeticiones++;
+		  }
+		  double rAnteultimo = 1 / uAnteultimo;
+		  double rFinal = 1 / uFinal;
+		  double rExtra = 1 / uExtra;
+		  Console.WriteLine("Los puntos utilizados para la interpolacion son: rAnteultimo = " + rAnteultimo.ToString() + ", rFinal = " + rFinal.ToString() + " y rExtra = " + rExtra.ToString());
+          // Para realizar la interpolacion, posiciono los puntos con el ángulo de la órbita en las abscisas y su distancia al Foco en las ordenadas
+          // El angulo alpha correspondiente a rAnteultimo es k*(-1+cantidadRepeticiones)
+          // El angulo alpha correspondiente a rFinal es k*(cantidadRepeticiones)
+          // El angulo alpha correspondiente a rFinal es k*(1+cantidadRepeticiones)
+          double posicionAnteultimo = k*(-1 + cantidadRepeticiones);
+		  double posicionFinal = k*(cantidadRepeticiones);
+		  double posicionExtra = k*(1 + cantidadRepeticiones);
+		  Console.WriteLine("Para realizar la interpolacion se ubican los puntos de la siguiente forma:");
+		  Console.WriteLine("- rAnteultimo en " + posicionAnteultimo.ToString());
+		  Console.WriteLine("- rFinal en " + posicionFinal.ToString());
+		  Console.WriteLine("- rExtra en " + posicionExtra.ToString());
+		  double C0, C1, C2;
+		  interpolacionNewton(posicionAnteultimo, rAnteultimo, posicionFinal, rFinal, posicionExtra, rExtra, out C0, out C1, out C2); // Interpolo y obtengo los coeficientes del polinomio
+		  Console.WriteLine("C0 = " + C0.ToString());
+		  Console.WriteLine("C1 = " + C1.ToString());
+		  Console.WriteLine("C2 = " + C2.ToString());
+		  // El polinomio interpolador es de la forma f(x) = C0 + C1(x - x0) + C2(x - x0)(x - x1)
+		  // Si ubicamos rAnteultimo en posicionAnteultimo y sucesivamente rFinal y rExtra, x0 = posicionAnteultimo, x1 = posicionFinal y x2 = posicionExtra
+		  // f(x) = C0 + C1 (x - posicionAnteultimo) + C2(x - posicionAnteultimo)(x - posicionFinal)
+		  // f(x) = C0 + C1 (x - posicionAnteultimo) + C2(x^2 - x*posicionFinal - x*posicionAnteultimo + posicionAnteultimo*posicionFinal)
+		  // f(x) = x^2 (C2) + x (C1 - C2*(posicionFinal + posicionAnteultimo)) + (C0 - C1*posicionAnteultimo + C2*posicionAnteultimo*posicionFinal)
+		  // f'(x) = 2*x*C2 + C1 - C2*(posicionFinal + posicionAnteultimo)
+		  // f'(x) = 0 <==> 2*x*C2 + C1 - C2*(posicionFinal + posicionAnteultimo) = 0 <==> x = (C2*(posicionFinal + posicionAnteultimo) - C1) / (2*C2)
+		  double minimo = (((C2 * (posicionFinal + posicionAnteultimo)) - C1) / (2d * C2));
+		  Console.WriteLine("El minimo calculado es " + minimo.ToString());
+		  double valorMinimo = (C0 + (C1 * (minimo - posicionAnteultimo)) + (C2 * (minimo - posicionAnteultimo) * (minimo - posicionFinal)));
+		  Console.WriteLine("El valor de la funcion en el minimo es " + valorMinimo.ToString());
+		  // La precesión coincide con la diferencia angular de dos perihelios consecutivos, encontrandose el perihelio anterior en el angulo: theta = k*N = 2pi
+		  double precesion = (minimo);
+          Console.WriteLine("El valor calculado de la precesion es " + precesion.ToString());
+            double precesionSegundosDeArco = precesion / Pi() * 3600d * 180d;
+            if (lambda == lambdaOriginal)
             {
-                // Sigo obteniendo valores de la órbita hasta conseguir uno uN vuelva a disminuir (rN vuelve a aumentar)
-                // Voy corriendo los dos que me voy guardando así me queda una terna consecutiva
-                uAnteultimo = uFinal;
-                uFinal = uExtra;
-                metodoEulerRelativista(uFinal, v0, ref uExtra, ref vN, k); // Obtengo un valor más de la órbita
-                v0 = vN;
-                cantidadRepeticiones++;
+                precesionSegundosDeArco *= (31557600d * 100d / 9036165d); // Periodo de la tierra dividido período de Mustafar
             }
+            else
+            {
+                precesionSegundosDeArco *= (365.25d * 100d / 87.97d);
+            }
+            
+		  Console.WriteLine("El valor calculado de la precesion en segundos de arco por siglo terrestre es " + precesionSegundosDeArco.ToString());
 
-
-            double rAnteultimo = 1 / uAnteultimo;
-            double rFinal = 1 / uFinal;
-            double rExtra = 1 / uExtra;
-            Console.WriteLine("Los puntos utilizados para la interpolacion son: rAnteultimo = " + rAnteultimo.ToString() + ", rFinal = " + rFinal.ToString() + " y rExtra = " + rExtra.ToString());
-            // Para realizar la interpolacion, posiciono los puntos con el ángulo de la órbita en las abscisas y su distancia al Foco en las ordenadas
-            // El angulo alpha correspondiente a rAnteultimo es (N-1+cantidadRepeticiones)
-            // El angulo alpha correspondiente a rFinal es (N+cantidadRepeticiones)
-            // El angulo alpha correspondiente a rFinal es (N+1+cantidadRepeticiones)
-            double posicionAnteultimo = k*(-1 + cantidadRepeticiones);
-            double posicionFinal = k*(cantidadRepeticiones);
-            double posicionExtra = k*(1 + cantidadRepeticiones);
-            Console.WriteLine("Para realizar la interpolacion se ubican los puntos de la siguiente forma:");
-            Console.WriteLine("- rAnteultimo en " + posicionAnteultimo.ToString());
-            Console.WriteLine("- rFinal en " + posicionFinal.ToString());
-            Console.WriteLine("- rExtra en " + posicionExtra.ToString());
-            double C0, C1, C2;
-            interpolacionNewton(posicionAnteultimo, rAnteultimo, posicionFinal, rFinal, posicionExtra, rExtra, out C0, out C1, out C2); // Interpolo y obtengo los coeficientes del polinomio
-            Console.WriteLine("C0 = " + C0.ToString());
-            Console.WriteLine("C1 = " + C1.ToString());
-            Console.WriteLine("C2 = " + C2.ToString());
-            // El polinomio interpolador es de la forma f(x) = C0 + C1(x - x0) + C2(x - x0)(x - x1)
-            // Si ubicamos rAnteultimo en posicionAnteultimo y sucesivamente rFinal y rExtra, x0 = posicionAnteultimo, x1 = posicionFinal y x2 = posicionExtra
-            // f(x) = C0 + C1 (x - posicionAnteultimo) + C2(x - posicionAnteultimo)(x - posicionFinal)
-            // f(x) = C0 + C1 (x - posicionAnteultimo) + C2(x^2 - x*posicionFinal - x*posicionAnteultimo + posicionAnteultimo*posicionFinal)
-            // f(x) = x^2 (C2) + x (C1 - C2*(posicionFinal + posicionAnteultimo)) + (C0 - C1*posicionAnteultimo + C2*posicionAnteultimo*posicionFinal)
-            // f'(x) = 2*x*C2 + C1 - C2*(posicionFinal + posicionAnteultimo)
-            // f'(x) = 0 <==> 2*x*C2 + C1 - C2*(posicionFinal + posicionAnteultimo) = 0 <==> x = (C2*(posicionFinal + posicionAnteultimo) - C1) / (2*C2)
-            double minimo = (((C2 * (posicionFinal + posicionAnteultimo)) - C1) / (2d * C2));
-            Console.WriteLine("El minimo calculado es " + minimo.ToString());
-            double valorMinimo = (C0 + (C1 * (minimo - posicionAnteultimo)) + (C2 * (minimo - posicionAnteultimo) * (minimo - posicionFinal)));
-            Console.WriteLine("El valor de la funcion en el minimo es " + valorMinimo.ToString());
-            // La precesión coincide con la diferencia angular de dos perihelios consecutivos, encontrandose el perihelio anterior en el angulo: theta = k*N = 2pi
-            double precesion = (minimo);
-            Console.WriteLine("El valor calculado de la precesion es " + precesion.ToString());
-            double precesionSegundosDeArco = precesion / Pi() * 3600d * 180d * 365.25d * 100d / 87.97d;
-            Console.WriteLine("El valor calculado de la precesion en segundos de arco por siglo terrestre es " + precesionSegundosDeArco.ToString());
-            #endregion
+          var messagePrecesion = string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8}{9}",
+		    N.ToString(),
+		    rAnteultimo.ToString(),
+		    rFinal.ToString(),
+		    rExtra.ToString(),
+		    C0.ToString(),
+		    C1.ToString(),
+		    C2.ToString(),
+		    precesion.ToString(),
+		    precesionSegundosDeArco.ToString(),
+		    Environment.NewLine);
+		  File.AppendAllText(fileNamePrecesion, messagePrecesion); // Lo agrego al archivo.
+		  #endregion
         }
 
         #endregion
@@ -707,17 +757,21 @@ namespace TP2
             vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
         }
 
-        private static void rungeKuttaOrden4Relativista(float u0, float v0, ref float uN, ref float vN, float k)
+        private static void rungeKuttaOrden4Relativista(double u0, double v0, ref double uN, ref double vN, double k)
         {
-            float w1 = u0 + k * v0 / 2f;
-            float z1 = v0 + k * ((GM / h2) - u0 - (3f * GM * Pow(u0, 2) / c2)) / 2f;
-            float w2 = u0 + k * z1 / 2;
-            float z2 = v0 + k * ((GM / h2) - w1 - (3f * GM * Pow(w1, 2) / c2)) / 2f;
-            float w3 = u0 + k * z2;
-            float z3 = v0 + k * ((GM / h2) - w2 - (3f * GM * Pow(w2, 2) / c2));
+            double alpha = (GM / h2);
 
-            uN = u0 + k * (v0 + 2 * z1 + 2 * z2 + z3) / 6;
-            vN = v0 + k * (6 * (GM / h2) - u0 - 2 * w1 - 2 * w2 - w3) / 6;
+            double l1 = k * v0;
+            double w1 = k * (-u0 + alpha + (3d * GM * Pow(u0, 2) / c2));
+            double l2 = k * (v0 + (w1 / 2d));
+            double w2 = k * (-u0 - (l1 / 2d) + alpha + (3d * GM * Pow((u0 + (l1 / 2d)), 2) / c2));
+            double l3 = k * (v0 + (w2 / 2d));
+            double w3 = k * (-u0 - (l2 / 2d) + alpha + (3d * GM * Pow((u0 + (l2 / 2d)), 2) / c2));
+            double l4 = k * (v0 + w3);
+            double w4 = k * (-u0 - l3 + alpha + (3d * GM * Pow((u0 + l3), 2) / c2));
+
+            uN = u0 + (l1 + 2d * l2 + 2d * l3 + l4) / 6;
+            vN = v0 + (w1 + 2d * w2 + 2d * w3 + w4) / 6;
         }
 
         #endregion
